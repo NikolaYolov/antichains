@@ -36,7 +36,7 @@ template<size_t dim>
 void generate_antichains_r(Poset<dim> poset, vector<Antichain<dim> >& output) {
 	size_t pivot;
 	// Choose the first contained set as pivot.
-	for (pivot = 0; pivot < poset.size() && !poset.test(pivot); ++pivot) {
+	for (pivot = 0; pivot < poset.size() && !poset[pivot]; ++pivot) {
 	}
 
 	if (pivot == poset.size()) {
@@ -81,41 +81,50 @@ vector<Antichain<dim> > generate_antichains(Poset<dim> poset) {
 }
 
 typedef vector<size_t> Permutation;
-
-vector<Permutation> generate_permutations(size_t dim) {
-	vector<Permutation> output;
-	Permutation perm;
-	// The loop intialises perm as the first permutation.
-	for (size_t i = 0; i < dim; ++i) {
-		perm.push_back(i);
-	}
-	output.push_back(perm);
-
-	while (next_permutation(perm.begin(), perm.end())) {
-		output.push_back(perm);
-	}
-
-	return output;
-}
+vector<Permutation> generate_permutations(size_t dim);
 
 template<size_t dim>
-Subset<dim> act(Subset<dim> s, const Permutation& perm) {
+Subset<dim> act_subset(Subset<dim> s, const Permutation& perm) {
 	Subset<dim> ret;
 	for (size_t i = 0; i < s.size(); ++i) {
-		ret[perm[i]] = s.test(i);
+		ret[perm[i]] = s[i];
 	}
 	return ret;
 }
 
 // Note that there is not a single if in the entire implementation.
 template<size_t dim>
-Antichain<dim> act(Antichain<dim> a, const Permutation& perm) {
+Antichain<dim> act_antichain(Antichain<dim> a, const Permutation& perm) {
 	Antichain<dim> ret;
 	for (size_t i = 0; i < ret.size(); ++i) {
-		size_t image = act<dim>(Subset<dim>(i), perm).to_ulong();
-		ret[image] = a.test(i);
+		size_t image = act_subset<dim>(Subset<dim>(i), perm).to_ulong();
+		ret[image] = a[i];
 	}
 	return ret;
+}
+
+template<size_t dim>
+unordered_set<Antichain<dim> > get_class(Antichain<dim> achain,
+					 const vector<Permutation>& perms) {
+	unordered_set<Antichain<dim> > ret;
+
+	for (const Permutation& perm : perms)
+		ret.insert(act_antichain<dim>(achain, perm));
+
+	return ret;
+}
+
+template<size_t dim>
+Antichain<dim> representative(const unordered_set<Antichain<dim> >& class_set) {
+	auto it = class_set.begin();
+	Antichain<dim> min_found = *(it++);
+	for (; it != class_set.end(); ++it) {
+		if (hash<Antichain<dim> >()(*it) <         // Not ideal.
+		    hash<Antichain<dim> >()(min_found)) {  // Don't how to make
+			min_found = *it;                   // it nicer.
+		}
+	}
+	return min_found;
 }
 
 // With respect to the group action given in the second argument,
@@ -123,27 +132,84 @@ Antichain<dim> act(Antichain<dim> a, const Permutation& perm) {
 // then canonise(a) == canonise(b).
 template<size_t dim>
 Antichain<dim> canonise(Antichain<dim> a, const vector<Permutation>& perms) {
-	Antichain<dim> min_found = a;
-	for (const Permutation& perm : perms) {
-		Antichain<dim> test = act<dim>(a, perm);
-		if (hash<Antichain<dim> >()(test) <        // Not ideal.
-		    hash<Antichain<dim> >()(min_found)) {  // Don't how to make
-			min_found = test;                  // it nicer.
-		}
-	}
-	return min_found;
+	return representative<dim>(get_class<dim>(a, perms));
 }
 
 template<size_t dim>
-unordered_set<Antichain<dim> > generate_classes(
+unordered_set<Antichain<dim> > filter_classes(
 	const vector<Antichain<dim> >& input) {
 	vector<Permutation> perms = generate_permutations(dim);
 
+	unordered_set<Antichain<dim> > achains(input.begin(), input.end());
 	unordered_set<Antichain<dim> > output;
-	for (Antichain<dim> a : input) {
-		output.insert(canonise<dim>(a, perms));
+
+	while (achains.size() > 0) {
+		Antichain<dim> pivot = *achains.begin();
+		auto cur_class = get_class<dim>(pivot, perms);
+		output.insert(representative<dim>(cur_class));
+		for (Antichain<dim> cur : cur_class) {
+			achains.erase(cur);
+		}
 	}
+
 	return output;
 }
+
+template<size_t dim>
+bool doesnt_contain_any(Subset<dim> s, SetSystem<dim> system) {
+	for (size_t i = 0; i < system.size(); ++i) {
+		if (system[i] && le<dim>(i, s)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+#include <iostream>
+
+template<size_t dim>
+vector<Antichain<dim> > partial_antichains(Poset<dim> poset) {
+	Poset<(dim-1)> lower_poset, upper_poset;
+	for (size_t i = 0; i < lower_poset.size(); ++i) {
+		lower_poset[i] = poset[i];
+	}
+	for (size_t i = 0; i < upper_poset.size(); ++i) {
+		upper_poset[i] = poset[i + lower_poset.size()];
+	}
+
+	unordered_set<Antichain<(dim-1)> > lower_classes =
+		filter_classes<(dim-1)>(partial_antichains<(dim-1)>(lower_poset));
+
+	vector<Antichain<dim> > result;
+	int low_idx = 0;
+	for (Antichain<dim-1> lower_part : lower_classes) {
+		cout << ++low_idx << "\t/" << lower_classes.size() << "\r";
+		cout.flush();
+
+		Poset<(dim-1)> not_more_poset;
+		for (size_t i = 0; i < upper_poset.size(); ++i) {
+			not_more_poset[i] = upper_poset[i] &&
+				doesnt_contain_any<(dim-1)>(i, lower_part);
+		}
+
+		vector<Antichain<(dim-1)> > upper_parts
+			= generate_antichains<dim-1>(not_more_poset);
+		for (Antichain<(dim-1)> upper_part : upper_parts) {
+			Antichain<dim> add_me;
+			for (size_t i = 0; i < lower_part.size(); ++i) {
+				add_me[i] = lower_part[i];
+			}
+			for (size_t i = 0; i < upper_part.size(); ++i) {
+				add_me[i + lower_part.size()] = upper_part[i];
+			}
+			result.push_back(add_me);
+		}
+	}
+	cout << endl;
+	return result;
+}
+
+template<>
+vector<Antichain<0> > partial_antichains<0>(Poset<0>);
 
 #endif // _ANTICHAIN_H_
