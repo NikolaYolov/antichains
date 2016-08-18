@@ -11,18 +11,16 @@ public:
 	ProgressBar(size_t max_val)
 		: max_(max_val)
 		, step_(max_ / min(size_t(20000), max_))
-		, cur_(0)
+		, last_progress_(0)
 		, did_print_(false) {
 	}
 
 	void RegisterProgress() {
-		cur_++;
-		Display_();
+		Display_(last_progress_ + 1);
 	}
 
 	void SetProgress(size_t cur) {
-		cur_ = cur;
-		Display_();
+		Display_(cur);
 	}
 
 	size_t Max() const {
@@ -36,9 +34,10 @@ public:
 	}
 
 private:
-	void Display_() {
-		if (cur_ % step_ == 0 || cur_ == max_) {
-			size_t percent = (cur_ * 100) / max_;
+	void Display_(size_t new_progress) {
+		if ((new_progress / step_) > (last_progress_ / step_)
+		    || new_progress == max_) {
+			size_t percent = (new_progress * 100) / max_;
 			cout << "[";
 			for (size_t i = 0; i < percent; ++i) {
 				cout << "#";
@@ -46,15 +45,16 @@ private:
 			for (size_t i = percent; i < 100; ++i) {
 				cout << "-";
 			}
-			cout << "] " << percent << "% (" << cur_ << "/"
+			cout << "] " << percent << "% (" << new_progress << "/"
 			     << max_ << ")\r";
 			cout.flush();
 			did_print_ = true;
 		}
+		last_progress_ = new_progress;
 	}
 	size_t max_;
 	size_t step_;
-	size_t cur_;
+	size_t last_progress_;
 	bool did_print_;
 };
 
