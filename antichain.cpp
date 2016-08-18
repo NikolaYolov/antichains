@@ -17,6 +17,13 @@ vector<Permutation> generate_permutations(size_t dim) {
 }
 
 template<>
-vector<Antichain<0> > partial_antichains<0>(Poset<0> poset) {
+vector<Antichain<0> > partial_antichains<0, false>(Poset<0> poset) {
+	return generate_antichains<0>(poset);
+}
+
+template<>
+vector<Antichain<0> > partial_antichains<0, true>(Poset<0> poset) {
+	ProgressBar progbar(1);
+	progbar.RegisterProgress();
 	return generate_antichains<0>(poset);
 }

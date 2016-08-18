@@ -23,7 +23,8 @@ enum class FileName {
 };
 
 template<size_t dim>
-void write_file(const vector<Antichain<dim> >& , FileName);
+void
+write_file(const vector<Antichain<dim> >& , FileName);
 
 template<size_t dim>
 void write_file(const unordered_set<Antichain<dim> >& s, FileName fn) {
@@ -32,12 +33,19 @@ void write_file(const unordered_set<Antichain<dim> >& s, FileName fn) {
 }
 
 template<size_t dim>
-vector<Antichain<dim> > read_file(FileName);
+vector<Antichain<dim> > read_file(FileName fn) {
+	vector<Antichain<dim> > result;
+	read_file<dim, vector<Antichain<dim>>>(fn, result,
+		  [&result](Antichain<dim> a){result.push_back(a);});
+	return result;
+}
 
 template<size_t dim>
 unordered_set<Antichain<dim> > read_file_as_set(FileName fn) {
-	auto vec = read_file<dim>(fn);
-	return unordered_set<Antichain<dim> >(vec.begin(), vec.end());
+	unordered_set<Antichain<dim> > result;
+	read_file<dim, unordered_set<Antichain<dim>>>(fn, result,
+		  [&result](Antichain<dim> a){result.insert(a);});
+	return result;
 }
 
 // Implementation
@@ -105,31 +113,30 @@ void write_file(const vector<Antichain<dim> >& achains, FileName fn) {
 	}
 }
 
-template<size_t dim>
-vector<Antichain<dim> > read_file(FileName fn) {
-	vector<Antichain<dim> > ret;
+template<size_t dim, class Container>
+	void read_file(FileName fn, Container container,
+		       function<void(Antichain<dim>)> insert) {
 	size_t dim_var, size_var;
 	if (is_binary(fn)) {
 		ifstream infile(convertFileName(fn, dim), ios::binary);
 		infile.read((char*)&dim_var, sizeof dim_var);
 		infile.read((char*)&size_var, sizeof size_var);
 		assert(dim_var == dim);
-		ret.resize(size_var);
+		container.reserve(size_var);
 		for (size_t i = 0; i < size_var; ++i) {
-			ret[i] = read_antichain_from_binary<dim>(infile);
+		        insert(read_antichain_from_binary<dim>(infile));
 		}
 	} else {
 		ifstream infile(convertFileName(fn, dim));
 		infile >> dim_var >> size_var;
 		assert(dim_var == dim);
-		ret.resize(size_var);
+		container.reserve(size_var);
 		for (size_t i = 0; i < size_var; ++i) {
 			Antichain<dim> a;
 			infile >> a;
-			ret[i] = a;
+			insert(a);
 		}
 	}
-	return ret;
 }
 
 #endif // _FILEIO_H_

@@ -82,7 +82,7 @@ void computation_test() {
 		write_file<dim>(achains, FileName::AntichainsBinary);
 
 		unordered_set<Antichain<dim> > classes
-			= filter_classes<dim>(partial_antichains<dim>(cube));
+			= filter_classes<dim, true>(partial_antichains<dim, true>(cube));
 		write_file<dim>(classes, FileName::ClassesText);
 		write_file<dim>(classes, FileName::ClassesBinary);
 	}

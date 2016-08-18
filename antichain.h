@@ -7,6 +7,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "progress_bar.h"
+
 using namespace::std;
 
 template<size_t dim>
@@ -135,15 +137,18 @@ Antichain<dim> canonise(Antichain<dim> a, const vector<Permutation>& perms) {
 	return representative<dim>(get_class<dim>(a, perms));
 }
 
-template<size_t dim>
+template<size_t dim, bool progress=false>
 unordered_set<Antichain<dim> > filter_classes(
-	const vector<Antichain<dim> >& input) {
-	vector<Permutation> perms = generate_permutations(dim);
+	unordered_set<Antichain<dim> >& achains) {
 
-	unordered_set<Antichain<dim> > achains(input.begin(), input.end());
+	vector<Permutation> perms = generate_permutations(dim);
 	unordered_set<Antichain<dim> > output;
 
+	ProgressBar progbar(achains.size());
 	while (achains.size() > 0) {
+		if (progress) {
+			progbar.SetProgress(progbar.Max() - achains.size());
+		}
 		Antichain<dim> pivot = *achains.begin();
 		auto cur_class = get_class<dim>(pivot, perms);
 		output.insert(representative<dim>(cur_class));
@@ -151,8 +156,20 @@ unordered_set<Antichain<dim> > filter_classes(
 			achains.erase(cur);
 		}
 	}
+	if (progress) {
+		progbar.SetProgress(progbar.Max());
+	}
 
 	return output;
+}
+
+template<size_t dim, bool progress=false>
+unordered_set<Antichain<dim> > filter_classes(
+	const vector<Antichain<dim> >& input) {
+	vector<Permutation> perms = generate_permutations(dim);
+
+        unordered_set<Antichain<dim> > achains(input.begin(), input.end());
+	return filter_classes<dim, progress>(achains);
 }
 
 template<size_t dim>
@@ -165,9 +182,7 @@ bool doesnt_contain_any(Subset<dim> s, SetSystem<dim> system) {
 	return true;
 }
 
-#include <iostream>
-
-template<size_t dim>
+template<size_t dim, bool progress=false>
 vector<Antichain<dim> > partial_antichains(Poset<dim> poset) {
 	Poset<(dim-1)> lower_poset, upper_poset;
 	for (size_t i = 0; i < lower_poset.size(); ++i) {
@@ -181,10 +196,11 @@ vector<Antichain<dim> > partial_antichains(Poset<dim> poset) {
 		filter_classes<(dim-1)>(partial_antichains<(dim-1)>(lower_poset));
 
 	vector<Antichain<dim> > result;
-	int low_idx = 0;
+	ProgressBar prog(lower_classes.size());
 	for (Antichain<dim-1> lower_part : lower_classes) {
-		cout << ++low_idx << "\t/" << lower_classes.size() << "\r";
-		cout.flush();
+		if (progress) {
+			prog.RegisterProgress();
+		}
 
 		Poset<(dim-1)> not_more_poset;
 		for (size_t i = 0; i < upper_poset.size(); ++i) {
@@ -205,11 +221,13 @@ vector<Antichain<dim> > partial_antichains(Poset<dim> poset) {
 			result.push_back(add_me);
 		}
 	}
-	cout << endl;
 	return result;
 }
 
 template<>
-vector<Antichain<0> > partial_antichains<0>(Poset<0>);
+vector<Antichain<0> > partial_antichains<0, false>(Poset<0>);
+
+template<>
+vector<Antichain<0> > partial_antichains<0, true>(Poset<0>);
 
 #endif // _ANTICHAIN_H_
