@@ -4,7 +4,7 @@
 #include "fileio.h"
 #include "phases.h"
 
-static const size_t n = 6;
+static const size_t n = 7;
 
 int main() {
 //	phase1<n, true>();
