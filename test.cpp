@@ -16,4 +16,12 @@ int main() {
         consistency_test<4>();
         consistency_test<5>();
         consistency_test<6>();
+
+	phase_test<0>(1);
+	phase_test<1>(1);
+	phase_test<2>(1);
+	phase_test<3>(1);
+	phase_test<4>(1);
+	phase_test<5>(10);
+	phase_test<6>(1000);
 }

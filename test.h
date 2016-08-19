@@ -7,6 +7,7 @@
 
 #include "antichain.h"
 #include "fileio.h"
+#include "phases.h"
 
 // Checks if achain is an actual antichain: every pair of elements are
 // incomparable.
@@ -81,7 +82,7 @@ void computation_test() {
 		write_file<dim>(achains, FileName::AntichainsText);
 		write_file<dim>(achains, FileName::AntichainsBinary);
 
-		unordered_set<Antichain<dim> > classes
+	        vector<Antichain<dim> > classes
 			= filter_classes<dim, true>(partial_antichains<dim, true>(cube));
 		write_file<dim>(classes, FileName::ClassesText);
 		write_file<dim>(classes, FileName::ClassesBinary);
@@ -116,4 +117,15 @@ void computation_test() {
 	}
 }
 
+template<size_t dim>
+void phase_test(size_t chunk) {
+	cout << "Testing phases<" << dim << ">" << endl;
+	phase1<dim, false>();
+	phase2<dim, false>(chunk);
+	unordered_set<Antichain<dim> > classes_new_bin
+		= read_file_as_set<dim>(FileName::ClassesBinary);
+	unordered_set<Antichain<dim> > classes_backup_bin
+		= read_file_as_set<dim>(FileName::ClassesBackupBinary);
+	assert(classes_new_bin == classes_backup_bin);
+}
 #endif // _TEST_H_

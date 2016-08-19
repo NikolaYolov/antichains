@@ -138,11 +138,11 @@ Antichain<dim> canonise(Antichain<dim> a, const vector<Permutation>& perms) {
 }
 
 template<size_t dim, bool progress=false>
-unordered_set<Antichain<dim> > filter_classes(
+vector<Antichain<dim> > filter_classes(
 	unordered_set<Antichain<dim> >& achains) {
 
 	vector<Permutation> perms = generate_permutations(dim);
-	unordered_set<Antichain<dim> > output;
+	vector<Antichain<dim> > output;
 
 	ProgressBar progbar(achains.size());
 	while (achains.size() > 0) {
@@ -151,7 +151,7 @@ unordered_set<Antichain<dim> > filter_classes(
 		}
 		Antichain<dim> pivot = *achains.begin();
 		auto cur_class = get_class<dim>(pivot, perms);
-		output.insert(representative<dim>(cur_class));
+		output.push_back(representative<dim>(cur_class));
 		for (Antichain<dim> cur : cur_class) {
 			achains.erase(cur);
 		}
@@ -164,7 +164,7 @@ unordered_set<Antichain<dim> > filter_classes(
 }
 
 template<size_t dim, bool progress=false>
-unordered_set<Antichain<dim> > filter_classes(
+vector<Antichain<dim> > filter_classes(
 	const vector<Antichain<dim> >& input) {
 	vector<Permutation> perms = generate_permutations(dim);
 
@@ -192,7 +192,7 @@ vector<Antichain<dim> > partial_antichains(Poset<dim> poset) {
 		upper_poset[i] = poset[i + lower_poset.size()];
 	}
 
-	unordered_set<Antichain<(dim-1)> > lower_classes =
+        vector<Antichain<(dim-1)> > lower_classes =
 		filter_classes<(dim-1)>(partial_antichains<(dim-1)>(lower_poset));
 
 	vector<Antichain<dim> > result;

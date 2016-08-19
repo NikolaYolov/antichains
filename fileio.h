@@ -23,8 +23,7 @@ enum class FileName {
 };
 
 template<size_t dim>
-void
-write_file(const vector<Antichain<dim> >& , FileName);
+void write_file(const vector<Antichain<dim> >& , FileName);
 
 template<size_t dim>
 void write_file(const unordered_set<Antichain<dim> >& s, FileName fn) {
@@ -33,18 +32,28 @@ void write_file(const unordered_set<Antichain<dim> >& s, FileName fn) {
 }
 
 template<size_t dim>
-vector<Antichain<dim> > read_file(FileName fn) {
+vector<Antichain<dim> > read_file(FileName fn, size_t first= 0,
+				  size_t last = size_t(-1)) {
 	vector<Antichain<dim> > result;
-	read_file<dim, vector<Antichain<dim>>>(fn, result,
-		  [&result](Antichain<dim> a){result.push_back(a);});
+	auto callback = [first, last, &result](Antichain<dim> a, size_t i) {
+		if (first <= i && i < last) {
+			result.push_back(a);
+		}
+	};
+	read_file<dim, vector<Antichain<dim>>>(fn, result, callback);
 	return result;
 }
 
 template<size_t dim>
-unordered_set<Antichain<dim> > read_file_as_set(FileName fn) {
+unordered_set<Antichain<dim> > read_file_as_set(FileName fn, size_t first= 0,
+				  size_t last = size_t(-1)) {
 	unordered_set<Antichain<dim> > result;
-	read_file<dim, unordered_set<Antichain<dim>>>(fn, result,
-		  [&result](Antichain<dim> a){result.insert(a);});
+	auto callback = [first, last, &result](Antichain<dim> a, size_t i){
+		if (first <= i && i < last) {
+			result.insert(a);
+		}
+	};
+	read_file<dim, unordered_set<Antichain<dim>>>(fn, result, callback);
 	return result;
 }
 
@@ -115,26 +124,24 @@ void write_file(const vector<Antichain<dim> >& achains, FileName fn) {
 
 template<size_t dim, class Container>
 	void read_file(FileName fn, Container container,
-		       function<void(Antichain<dim>)> insert) {
+		       function<void(Antichain<dim>, size_t)> insert) {
 	size_t dim_var, size_var;
 	if (is_binary(fn)) {
 		ifstream infile(convertFileName(fn, dim), ios::binary);
 		infile.read((char*)&dim_var, sizeof dim_var);
 		infile.read((char*)&size_var, sizeof size_var);
 		assert(dim_var == dim);
-		container.reserve(size_var);
 		for (size_t i = 0; i < size_var; ++i) {
-		        insert(read_antichain_from_binary<dim>(infile));
+		        insert(read_antichain_from_binary<dim>(infile), i);
 		}
 	} else {
 		ifstream infile(convertFileName(fn, dim));
 		infile >> dim_var >> size_var;
 		assert(dim_var == dim);
-		container.reserve(size_var);
 		for (size_t i = 0; i < size_var; ++i) {
 			Antichain<dim> a;
 			infile >> a;
-			insert(a);
+			insert(a, i);
 		}
 	}
 }

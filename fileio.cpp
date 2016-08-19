@@ -48,5 +48,6 @@ bool is_binary(FileName fn) {
 		return true;
 	default:
 		assert(false);
+		return true;
 	};
 }
